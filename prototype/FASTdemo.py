@@ -6,14 +6,16 @@ from cv2 import TermCriteria_EPS
 import numpy as np
 import sys
 
+gftt_params = dict(maxCorners=100,
+                   qualityLevel=0.3,
+                   minDistance=7,
+                   blockSize=7)
 
 lk_params = dict(winSize=(15, 15),
                  maxLevel=2,
                  criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
 
-
-# def featureTracking(frame1, frame2, points1, points2, status):
-#     global lk_params
+color = np.random.randint(0, 255, (100, 3))
 
 
 if __name__ == "__main__":
@@ -22,8 +24,6 @@ if __name__ == "__main__":
         exit(1)
     print(f"Streaming file {sys.argv[1]}")
     cap = cv2.VideoCapture(sys.argv[1])
-    fast = cv2.FastFeatureDetector_create(20, True)
-    # fast.setNonmaxSuppression(1)
     if (cap.isOpened() == False):
         print("Cant open file")
         exit(1)
@@ -31,16 +31,15 @@ if __name__ == "__main__":
     # Grab first frame and find corners
     ret, old_frame = cap.read()
     old_frame = cv2.cvtColor(old_frame, cv2.COLOR_BGR2GRAY)
-    p0 = fast.detect(old_frame, None)
-
     while (cap.isOpened()):
+        p0 = cv2.goodFeaturesToTrack(old_frame, mask=None, **gftt_params)
+
+        mask = np.zeros_like(old_frame)
         ret, frame = cap.read()
         # CVT to gray and undistort
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # Detect features
-        # p1 = fast.detect(frame, None)
-        # point2fs = KeyPoint_convert(p1)
         # Calculate Optical Flow
         p1, st, err = cv2.calcOpticalFlowPyrLK(
             old_frame, frame, p0, None, **lk_params)
@@ -53,8 +52,9 @@ if __name__ == "__main__":
             a, b = new.ravel()
             c, d = old.ravel()
             mask = cv2.line(mask, (int(a), int(b)),
-                            (int(c), int(d)), [5, 20, 100], 2)
-            frame = cv2.circle(frame, (int(a), int(b)), 5, [5, 20, 100], -1)
+                            (int(c), int(d)), color[i].tolist(), 2)
+            frame = cv2.circle(frame, (int(a), int(b)),
+                               5, color[i].tolist(), -1)
         img = cv2.add(frame, mask)
 
         # img2 = cv2.drawKeypoints(frame, p1, None, color=(255, 0, 0))
