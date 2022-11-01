@@ -23,7 +23,6 @@ def featureTracking(image_ref, image_cur, px_ref):
     st = st.reshape(st.shape[0])
     kp1 = px_ref[st == 1]
     kp2 = kp2[st == 1]
-
     return kp1, kp2
 
 
@@ -70,6 +69,26 @@ class VisualOdometry:
         self.trueX, self.trueY, self.trueZ = x, y, z
         return np.sqrt((x - x_prev)*(x-x_prev) + (y-y_prev)*(y-y_prev) + (z-z_prev)*(z-z_prev))
 
+    def SafeEssentialMat(self, PixelCurrent, PixelReference):
+        if len(PixelCurrent) == 0 or len(PixelReference) == 0:
+            print(
+                "Cannot Compute essential Mat, No lockon for pixels. [Resetting Frame Stage to 0]")
+            self.frame_stage = STAGE_FIRST_FRAME
+            return False, -1, -1
+        E, mask = cv2.findEssentialMat(
+            PixelCurrent, PixelReference, focal=self.focal, pp=self.pp, method=cv2.RANSAC, prob=0.999, threshold=1.0)
+        return True, E, mask
+
+    def SafePoseRecovery(self, EssentialMatrix, PixelCurrent, PixelReference):
+        if (EssentialMatrix is None):
+            print(
+                "Lost Tracking, no essential matrix. [Resetting Frame Stage to 0]")
+            self.frame_stage = STAGE_FIRST_FRAME
+            return False, -1, -1
+        _, currentRotation, currentTransformation, mask = cv2.recoverPose(
+            EssentialMatrix, PixelCurrent, PixelReference, focal=self.focal, pp=self.pp)
+        return True, currentRotation, currentTransformation
+
     def processFirstFrame(self):
         print("First Frame!")
         self.px_ref = self.detector.detect(self.new_frame)
@@ -82,43 +101,41 @@ class VisualOdometry:
     def processSecondFrame(self):
         self.px_ref, self.px_cur = featureTracking(
             self.last_frame, self.new_frame, self.px_ref)
-        if len(self.px_ref) == 0 or len(self.px_cur) == 0:
-            print("NO lock on!")
-            self.frame_stage = STAGE_FIRST_FRAME
+        success, E, mask = self.SafeEssentialMat(self.px_cur, self.px_ref)
+        if not success:
             return
-        E, mask = cv2.findEssentialMat(
-            self.px_cur, self.px_ref, focal=self.focal, pp=self.pp, method=cv2.RANSAC, prob=0.999, threshold=1.0)
-        if (E is None):
-            print("Lost Tracking!")
-            self.frame_stage = STAGE_FIRST_FRAME
+        success, currentRot, currentTrans = self.SafePoseRecovery(
+            E, self.px_cur, self.px_ref)
+        if not success:
             return
-        _, self.cur_R, self.cur_t, mask = cv2.recoverPose(
-            E, self.px_cur, self.px_ref, focal=self.focal, pp=self.pp)
+        if self.cur_t is None:
+            self.cur_t = currentTrans
+        else:
+            self.cur_t = self.cur_t + 1*self.cur_R.dot(currentTrans)
+
+        if self.cur_R is None:
+            self.cur_R = currentRot
+        else:
+            self.cur_R = currentRot.dot(self.cur_R)
         self.frame_stage = STAGE_DEFAULT_FRAME
         self.px_ref = self.px_cur
 
-    # BUG: On our own data, it's possible for there to be no frames between this and previous frame.
-    # and in this situation the essential matrix will be nothing, and then the features themselves will eventually die out.
     def processFrame(self, frame_id):
         self.px_ref, self.px_cur = featureTracking(
             self.last_frame, self.new_frame, self.px_ref)
-        print(f"S1: {len(self.px_cur)} S2: {len(self.px_ref)}")
-        if len(self.px_ref) == 0 or len(self.px_cur) == 0:
-            print("NO lock on!")
-            self.frame_stage = STAGE_FIRST_FRAME
+        success, E, mask = self.SafeEssentialMat(self.px_cur, self.px_ref)
+        if not success:
             return
-        E, mask = cv2.findEssentialMat(
-            self.px_cur, self.px_ref, focal=self.focal, pp=self.pp, method=cv2.RANSAC, prob=0.999, threshold=1.0)
-        if (E is None):
-            print("Lost Tracking!")
-            self.frame_stage = STAGE_FIRST_FRAME
+        success, currentRot, currentTrans = self.SafePoseRecovery(
+            E, self.px_cur, self.px_ref)
+        if not success:
             return
-        _, R, t, mask = cv2.recoverPose(
-            E, self.px_cur, self.px_ref, focal=self.focal, pp=self.pp)
+        R, t = currentRot, currentTrans
         # absolute_scale = self.getAbsoluteScale(frame_id)
         absolute_scale = 1
         if (absolute_scale > 0.1):
             self.cur_t = self.cur_t + absolute_scale*self.cur_R.dot(t)
+            print(self.cur_t)
             self.cur_R = R.dot(self.cur_R)
         if (self.px_ref.shape[0] < kMinNumFeature):
             self.px_cur = self.detector.detect(self.new_frame)

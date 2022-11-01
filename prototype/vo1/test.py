@@ -25,7 +25,9 @@ if __name__ == "__main__":
         print("Cant open file")
         exit(1)
 
-    START_FRAME = 0
+    START_FRAME = 300
+    DRAWOFFSET_X = 300
+    DRAWOFFSET_Z = 300
 
     frame_id = 0
     while (cap.isOpened()):
@@ -40,13 +42,14 @@ if __name__ == "__main__":
         vo.update(gray_frame, frame_id)
 
         cur_t = vo.cur_t
-        if (frame_id > START_FRAME+2):
+        if (frame_id > START_FRAME+3):
             x, y, z = cur_t[0], cur_t[1], cur_t[2]
         else:
             x, y, z = 0, 0, 0
 
-        draw_x, draw_y = int(x)+290, int(z)+90
-        true_x, true_y = int(vo.trueX)+290, int(vo.trueZ)+90
+        draw_x, draw_y = int(x)+DRAWOFFSET_X, int(z)+DRAWOFFSET_Z
+        true_x, true_y = int(vo.trueX) + \
+            DRAWOFFSET_X, int(vo.trueZ) + DRAWOFFSET_Z
 
         cv2.circle(traj, (draw_x, draw_y), 1, (frame_id *
                    255/4540, 255-frame_id*255/4540, 0), 1)
