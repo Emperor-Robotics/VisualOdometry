@@ -4,7 +4,9 @@ import numpy as np
 import sys
 import cv2
 
+
 cap = cv2.VideoCapture(sys.argv[1])
+# cap = cv2.VideoCapture(2)
 
 feature_params = dict(maxCorners=100,
                       qualityLevel=0.3,

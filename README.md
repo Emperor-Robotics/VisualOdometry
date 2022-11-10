@@ -73,3 +73,29 @@ https://github.com/avisingh599/mono-vo
 
 Ros Simple visual Monocular Odometry (Based on Previous)
 https://github.com/atomoclast/ros_mono_vo
+
+
+# Usage - VO Standalone
+
+Run the following command to test out optical flow and trajectory estimation.
+The calibration file is the one generated from ros image pipeline. For more information see `CALIB/README.md`
+Depending on whats entered for the second argument,
+-  If the value is an integer it will be treated as a device index and open that camera for live optical flow.
+-  If the value is a filepath, it will open the file and run the optical flow on the file.
+
+```
+python prototype/optiflow_w_essential.py [CALIBRATION.YAML] [DEVICE INDEX or FILEPATH]
+```
+
+
+# Usage - ROS PKG (UNDER CONSTRUCTION)
+
+Run the following or your camera's native ros package to get video stream.
+```
+ros2 run usb_cam usb_cam_node_exe --ros-args --params-file camera_params.yaml 
+```
+
+NOTE: camera_params should be copied from 
+`/opt/ros/humble/share/usb_cam/config/params.yaml` 
+and be modified accordingly (camera dimensions, and device path are most common changes)
+
