@@ -143,6 +143,9 @@ mask = np.zeros_like(first_frame)
 pose = Pose()
 plot = CVPlotter()
 
+# cv2.namedWindow("Optical Flow", cv2.WINDOW_KEEPRATIO)
+# cv2.resizeWindow("Optical Flow", 1280, 720)
+
 while (cap.isOpened()):
 
     ret, frame = cap.read()
@@ -205,8 +208,8 @@ while (cap.isOpened()):
         hudtext = f'Retracking'
     img_txt = cv2.putText(
         img, hudtext, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, selcol, 2, cv2.LINE_AA)
-    cv2.imshow("Optical flow", img_txt)
     cv2.imshow("Trajectory", plot.traj)
+    cv2.imshow("Optical Flow", img_txt)
 
     k = cv2.waitKey(25)
     if k == 27:
