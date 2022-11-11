@@ -5,6 +5,8 @@ from collections import namedtuple
 IMURead = namedtuple(
     'IMURead', ['yaw', 'pitch', 'roll', 'accX', 'accY', 'accZ'])
 
+# TODO: Need to be able to read latest line? not whats stuck in buffer?
+
 
 class IMU:
     """
@@ -25,15 +27,22 @@ class IMU:
     def initalize(self):
         self.is_initalized = False
         print("Attempting intialization...")
+        trycount = 100
         while not self.is_initalized:
             self.ardu.write(bytes('k', 'utf-8'))
             line = self.ardu.readline().decode()
             if len(line) > 2:
                 if line[0].isnumeric() or line[1].isnumeric():
                     self.is_initalized = True
+            trycount -= 1
+            if trycount <= 0:
+                print("Initialization failed!")
+                return
         print("Initialization complete!")
 
-    def read_IMU(self):
+    def read_IMU(self) -> IMURead:
+        if not self.is_initalized:
+            return -1
         lines = self.ardu.readline().decode()
         split = lines.split()
         if len(split) != 6:
