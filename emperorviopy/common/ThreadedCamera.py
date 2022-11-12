@@ -3,7 +3,6 @@ import cv2
 import sys
 import numpy as np
 from threading import Thread
-from ..common.IMU import IMU
 import time
 # Optimizations to keep cameras relatively sync'd and together.
 

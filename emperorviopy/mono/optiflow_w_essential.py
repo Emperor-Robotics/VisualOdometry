@@ -4,7 +4,7 @@ import sys
 import numpy as np
 import math
 import cv2
-from CameraModel import PinholeCamera
+from emperorviopy.common.CameraModel import PinholeCamera
 
 
 class CVPlotter:

@@ -1,3 +1,4 @@
 *.html
 *.pdf
 *.pyc
+*.egg-info

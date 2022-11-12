@@ -3,8 +3,9 @@ import cv2
 import sys
 import numpy as np
 from threading import Thread
-from ..common.IMU import IMU
-from ..common.ThreadedCamera import ThreadedCamera
+from emperorviopy.common.IMU import IMU
+from emperorviopy.common.CameraModel import PinholeCamera
+from emperorviopy.common.ThreadedCamera import ThreadedCamera
 import time
 # https://learnopencv.com/depth-perception-using-stereo-camera-python-c/
 # https://stackoverflow.com/questions/58293187/opencv-real-time-streaming-video-capture-is-slow-how-to-drop-frames-or-get-sync
@@ -26,7 +27,9 @@ if __name__ == '__main__':
     width_val = 420  # minimum for laptop hub
     height_val = 240  # minimum for laptop hub
     camL = ThreadedCamera(int(cam_left_index), width_val, height_val)
+    camLP = PinholeCamera.loadFromOST(cam_left_calibration_file)
     camR = ThreadedCamera(int(cam_right_index), width_val, height_val)
+    camRP = PinholeCamera.loadFromOST(cam_right_calibration_file)
     # maps for stereo image rectification?
 
     stereo = cv2.StereoBM_create(numDisparities=16, blockSize=9)
@@ -40,6 +43,10 @@ if __name__ == '__main__':
             print(
                 f"Issue recovering both frames. RL: {retL} RR: {retR} Might be a bandwith problem... Try different USB buses")
             exit(1)
+
+        # undisort
+        imgL = cv2.undistort(imgL, camLP.camera_matrix, camLP.d)
+        imgR = cv2.undistort(imgR, camRP.camera_matrix, camRP.d)
 
         # Post process to correct orientation for display given current rig
         imgL_corrected = np.rot90(imgL, k=-1)
