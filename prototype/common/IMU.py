@@ -15,6 +15,10 @@ class IMU:
     But should work assuming correct port and baudrate are supplied and device serial output 
     is in the format expected:
         "ROLL PITCH YAW ACCEL_X ACCEL_Y ACCEL_Z"
+
+    Calibration output: 
+             aX     aY    aZ     gX     gY    gZ  
+    Current: -850	297	1213	-332	397	-680
     """
 
     def __init__(self, serial_port: str = '/dev/ttyUSB0', baudrate: int = 38400, timeout=.1) -> None:
