@@ -24,15 +24,19 @@ if __name__ == '__main__':
     print(f"Capturing on cameras: L:{cam_left_index} R:{cam_right_index}")
 
     # If you want 720P, they need to go into different USB ports
-    width_val = 420  # minimum for laptop hub
-    height_val = 240  # minimum for laptop hub
+    # width_val = 420  # minimum for laptop hub
+    # height_val = 240  # minimum for laptop hub
+    width_val = None
+    height_val = None
     camL = ThreadedCamera(int(cam_left_index), width_val, height_val)
     camLP = PinholeCamera.loadFromOST(cam_left_calibration_file)
     camR = ThreadedCamera(int(cam_right_index), width_val, height_val)
     camRP = PinholeCamera.loadFromOST(cam_right_calibration_file)
     # maps for stereo image rectification?
 
-    stereo = cv2.StereoBM_create(numDisparities=16, blockSize=9)
+    stereo = cv2.StereoBM_create(
+        numDisparities=int(sys.argv[5]),
+        blockSize=int(sys.argv[6]))
 
     # Sleep so that the threads have time to spin up.
     time.sleep(1)
@@ -57,7 +61,11 @@ if __name__ == '__main__':
         imgL_corrected_gray = cv2.cvtColor(imgL_corrected, cv2.COLOR_BGR2GRAY)
         imgR_corrected_gray = cv2.cvtColor(imgR_corrected, cv2.COLOR_BGR2GRAY)
         disparity = stereo.compute(imgL_corrected_gray, imgR_corrected_gray)
-        full_img = np.hstack((imgL_corrected, imgR_corrected))
+
+        norm_disparity = cv2.normalize(
+            disparity, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+
+        full_img = np.hstack((imgL_corrected_gray, imgR_corrected_gray))
         cv2.waitKey(30)
         cv2.imshow('disp', full_img)
-        cv2.imshow('disparity', disparity)
+        cv2.imshow('disparity', norm_disparity)

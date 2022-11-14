@@ -16,7 +16,7 @@ class PinholeCamera:
         self.cx: float = cx
         self.cy: float = cy
         self.distortion: bool = (abs(k1) > 0.0000001)
-        self.d: List[float] = [k1, k2, p1, p2, k3]
+        self.d: np.ndarray = np.array([k1, k2, p1, p2, k3])
         self.raw_calibration_data: dict = raw_dat
         self.camera_matrix: np.ndarray = np.array([[self.fx, 0, self.cx],
                                                    [0, self.fx, self.cy],
