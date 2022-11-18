@@ -27,17 +27,17 @@ def nothing(x):
 cv2.namedWindow('disp', cv2.WINDOW_NORMAL)
 cv2.resizeWindow('disp', 600, 600)
 
-cv2.createTrackbar('numDisparities', 'disp', 1, 17, nothing)
-cv2.createTrackbar('blockSize', 'disp', 5, 50, nothing)
+cv2.createTrackbar('numDisparities', 'disp', 9, 17, nothing)
+cv2.createTrackbar('blockSize', 'disp', 1, 50, nothing)
 cv2.createTrackbar('preFilterType', 'disp', 1, 1, nothing)
 cv2.createTrackbar('preFilterSize', 'disp', 2, 25, nothing)
 cv2.createTrackbar('preFilterCap', 'disp', 5, 62, nothing)
 cv2.createTrackbar('textureThreshold', 'disp', 10, 100, nothing)
-cv2.createTrackbar('uniquenessRatio', 'disp', 15, 100, nothing)
-cv2.createTrackbar('speckleRange', 'disp', 0, 100, nothing)
-cv2.createTrackbar('speckleWindowSize', 'disp', 3, 25, nothing)
-cv2.createTrackbar('disp12MaxDiff', 'disp', 5, 25, nothing)
-cv2.createTrackbar('minDisparity', 'disp', 5, 25, nothing)
+cv2.createTrackbar('uniquenessRatio', 'disp', 0, 100, nothing)
+cv2.createTrackbar('speckleRange', 'disp', 5, 100, nothing)
+cv2.createTrackbar('speckleWindowSize', 'disp', 0, 25, nothing)
+cv2.createTrackbar('disp12MaxDiff', 'disp', 25, 25, nothing)
+cv2.createTrackbar('minDisparity', 'disp', 9, 25, nothing)
 
 # Creating an object of StereoBM algorithm
 stereo = cv2.StereoBM_create()
@@ -55,8 +55,10 @@ while True:
 
         imgL_gray = np.rot90(imgL_gray, k=-1)
         imgL_gray = np.flipud(imgL_gray)
+        imgL_gray = np.fliplr(imgL_gray)
         imgR_gray = np.rot90(imgR_gray, k=-1)
         imgR_gray = np.flipud(imgR_gray)
+        imgR_gray = np.fliplr(imgR_gray)
 
         Left_nice = imgL_gray
         Right_nice = imgR_gray
