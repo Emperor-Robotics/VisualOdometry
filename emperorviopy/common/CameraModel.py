@@ -27,9 +27,14 @@ class PinholeCamera:
         """
             Generate a PinholeCamera class from the yaml calibration output.
             yaml output obtained from ros2 image_pipeline calibration tools. 
+
+            distortion_map and rectification_map obtained from stereo calibration.
+
+            TODO: Can ros2 image_pipeline produce stereo rectification?
         """
         with open(filename, 'r') as f:
             dat = yaml.safe_load(f)
+
         return PinholeCamera(
             width=float(dat['image_width']),
             height=float(dat['image_height']),

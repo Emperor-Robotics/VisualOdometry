@@ -1,82 +1,51 @@
 #!/bin/env python
-import numpy as np
 import cv2
-
-# Check for left and right camera IDs
-# These values can change depending on the system
-CamL_id = 2  # Camera ID for left camera
-CamR_id = 4  # Camera ID for right camera
-
-CamL = cv2.VideoCapture(CamL_id)
-CamR = cv2.VideoCapture(CamR_id)
-
-# Reading the mapping values for stereo image rectification
-cv_file = cv2.FileStorage(
-    "data/stereo_rectify_maps.xml", cv2.FILE_STORAGE_READ)
-Left_Stereo_Map_x = cv_file.getNode("Left_Stereo_Map_x").mat()
-Left_Stereo_Map_y = cv_file.getNode("Left_Stereo_Map_y").mat()
-Right_Stereo_Map_x = cv_file.getNode("Right_Stereo_Map_x").mat()
-Right_Stereo_Map_y = cv_file.getNode("Right_Stereo_Map_y").mat()
-cv_file.release()
+import sys
+import numpy as np
+from threading import Thread
+from emperorviopy.common.IMU import IMU
+from emperorviopy.common.CameraModel import PinholeCamera
+from emperorviopy.common.ThreadedCamera import ThreadedCamera, ThreadedStereo
+import time
+import os
+from stereovision.calibration import StereoCalibrator, StereoCalibration
+from glob import glob
+import yaml
 
 
 def nothing(x):
     pass
 
 
-cv2.namedWindow('disp', cv2.WINDOW_NORMAL)
-cv2.resizeWindow('disp', 600, 600)
+def runGui(stereo_cameras: ThreadedStereo) -> None:
+    cv2.namedWindow('disp', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('disp', 600, 600)
 
-cv2.createTrackbar('numDisparities', 'disp', 9, 17, nothing)
-cv2.createTrackbar('blockSize', 'disp', 1, 50, nothing)
-cv2.createTrackbar('preFilterType', 'disp', 1, 1, nothing)
-cv2.createTrackbar('preFilterSize', 'disp', 2, 25, nothing)
-cv2.createTrackbar('preFilterCap', 'disp', 5, 62, nothing)
-cv2.createTrackbar('textureThreshold', 'disp', 10, 100, nothing)
-cv2.createTrackbar('uniquenessRatio', 'disp', 0, 100, nothing)
-cv2.createTrackbar('speckleRange', 'disp', 5, 100, nothing)
-cv2.createTrackbar('speckleWindowSize', 'disp', 0, 25, nothing)
-cv2.createTrackbar('disp12MaxDiff', 'disp', 25, 25, nothing)
-cv2.createTrackbar('minDisparity', 'disp', 9, 25, nothing)
+    cv2.createTrackbar('numDisparities', 'disp', 9, 17, nothing)
+    cv2.createTrackbar('blockSize', 'disp', 1, 50, nothing)
+    cv2.createTrackbar('preFilterType', 'disp', 1, 1, nothing)
+    cv2.createTrackbar('preFilterSize', 'disp', 2, 25, nothing)
+    cv2.createTrackbar('preFilterCap', 'disp', 5, 62, nothing)
+    cv2.createTrackbar('textureThreshold', 'disp', 10, 100, nothing)
+    cv2.createTrackbar('uniquenessRatio', 'disp', 0, 100, nothing)
+    cv2.createTrackbar('speckleRange', 'disp', 5, 100, nothing)
+    cv2.createTrackbar('speckleWindowSize', 'disp', 0, 25, nothing)
+    cv2.createTrackbar('disp12MaxDiff', 'disp', 25, 25, nothing)
+    cv2.createTrackbar('minDisparity', 'disp', 9, 25, nothing)
 
-# Creating an object of StereoBM algorithm
-stereo = cv2.StereoBM_create()
+    # Creating an object of StereoBM algorithm
+    stereo = cv2.StereoBM_create()
 
-while True:
-
-    # Capturing and storing left and right camera images
-    retL, imgL = CamL.read()
-    retR, imgR = CamR.read()
-
-    # Proceed only if the frames have been captured
-    if retL and retR:
+    while True:
+        ret, imgL, imgR = stereo_cameras.get_current_rectified_frame()
+        if not ret:
+            print("Cannot open stereo cameras.. continuing to try")
+            continue
         imgR_gray = cv2.cvtColor(imgR, cv2.COLOR_BGR2GRAY)
         imgL_gray = cv2.cvtColor(imgL, cv2.COLOR_BGR2GRAY)
 
-        imgL_gray = np.rot90(imgL_gray, k=-1)
-        imgL_gray = np.flipud(imgL_gray)
-        imgL_gray = np.fliplr(imgL_gray)
-        imgR_gray = np.rot90(imgR_gray, k=-1)
-        imgR_gray = np.flipud(imgR_gray)
-        imgR_gray = np.fliplr(imgR_gray)
-
         Left_nice = imgL_gray
         Right_nice = imgR_gray
-        # Applying stereo image rectification on the left image
-        # Left_nice = cv2.remap(imgL_gray,
-        #                       Left_Stereo_Map_x,
-        #                       Left_Stereo_Map_y,
-        #                       cv2.INTER_LANCZOS4,
-        #                       cv2.BORDER_CONSTANT,
-        #                       0)
-
-        # Applying stereo image rectification on the right image
-        # Right_nice = cv2.remap(imgR_gray,
-        #                        Right_Stereo_Map_x,
-        #                        Right_Stereo_Map_y,
-        #                        cv2.INTER_LANCZOS4,
-        #                        cv2.BORDER_CONSTANT,
-        #                        0)
 
         # Updating the parameters based on the trackbar positions
         numDisparities = cv2.getTrackbarPos('numDisparities', 'disp')*16
@@ -123,6 +92,31 @@ while True:
         if cv2.waitKey(1) == 27:
             break
 
-    else:
-        CamL = cv2.VideoCapture(CamL_id)
-        CamR = cv2.VideoCapture(CamR_id)
+
+def main():
+    cam_left_index = sys.argv[1]
+    cam_left_calibration_file = sys.argv[2]
+    cam_right_index = sys.argv[3]
+    cam_right_calibration_file = sys.argv[4]
+    stereo_calibration_folder = sys.argv[5]
+    print(f"Capturing on cameras: L:{cam_left_index} R:{cam_right_index}")
+    # If you want 720P, they need to go into different USB ports
+    # width_val = 420  # minimum for same laptop hub
+    # height_val = 240  # minimum for same laptop hub
+    width_val = None
+    height_val = None
+    camLP = PinholeCamera.loadFromOST(cam_left_calibration_file)
+    camL = ThreadedCamera(int(cam_left_index), width_val,
+                          height_val, camera_model=camLP)
+    camRP = PinholeCamera.loadFromOST(cam_right_calibration_file)
+    camR = ThreadedCamera(int(cam_right_index), width_val,
+                          height_val, camera_model=camRP)
+    stereo_cameras = ThreadedStereo(camL, camR, stereo_calibration_folder)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) < 6:
+        print(
+            "Please run with arguments: [left_cam index] [left_cam calibration] [cam_right index] [cam_right calibration] [stereo calibration folder]")
+        exit(1)
+    main()
