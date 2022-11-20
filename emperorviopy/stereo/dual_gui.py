@@ -38,6 +38,7 @@ def runGui(stereo_cameras: ThreadedStereo) -> None:
 
     while True:
         ret, imgL, imgR = stereo_cameras.get_current_rectified_frame()
+        # ret, imgL, imgR = stereo_cameras.get_current_frame_pair_pre_processed()
         if not ret:
             print("Cannot open stereo cameras.. continuing to try")
             continue
@@ -81,13 +82,12 @@ def runGui(stereo_cameras: ThreadedStereo) -> None:
 
         # Converting to float32
         disparity = disparity.astype(np.float32)
-
         # Scaling down the disparity values and normalizing them
         disparity = (disparity/16.0 - minDisparity)/numDisparities
-
         # Displaying the disparity map
+        full_img = np.hstack((Left_nice, Right_nice))
         cv2.imshow("disp", disparity)
-
+        cv2.imshow('full', full_img)
         # Close window using esc key
         if cv2.waitKey(1) == 27:
             break
@@ -112,6 +112,8 @@ def main():
     camR = ThreadedCamera(int(cam_right_index), width_val,
                           height_val, camera_model=camRP)
     stereo_cameras = ThreadedStereo(camL, camR, stereo_calibration_folder)
+    time.sleep(2)
+    runGui(stereo_cameras)
 
 
 if __name__ == '__main__':

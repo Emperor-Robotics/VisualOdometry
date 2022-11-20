@@ -86,7 +86,7 @@ class ThreadedStereo(object):
 
     def get_current_frame_pair_raw(self) -> Tuple[bool, np.ndarray, np.ndarray]:
         leftret, leftframe = self.camera_left.get_current_frame()
-        rightret, rightframe = self.camera_left.get_current_frame()
+        rightret, rightframe = self.camera_right.get_current_frame()
         return leftret and rightret, leftframe, rightframe
 
     def get_current_frame_pair_pre_processed(self) -> Tuple[bool, np.ndarray, np.ndarray]:
