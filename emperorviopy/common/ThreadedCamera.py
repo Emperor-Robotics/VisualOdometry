@@ -17,6 +17,7 @@ class ThreadedCamera(object):
         self.capture = cv2.VideoCapture(src)
         # Limit the buffer to maintain high FPS and sync
         self.capture.set(cv2.CAP_PROP_BUFFERSIZE, buffersize)
+        self.capture.set(cv2.CAP_PROP_FORMAT, -1)
 
         # Turn off auto exposure to prevent lighting changes producing noise.
         # If anything, should have it so the two cameras are sync'd in exposure changes

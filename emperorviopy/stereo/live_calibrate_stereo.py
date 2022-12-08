@@ -14,7 +14,7 @@ import yaml
 
 numBoards = 30  # number of images for calibration
 board = (7, 10)  # row cols
-squareSize = 1.5  # standard = 1 small chessboard = 2.5 large chessboard = 4.4
+squareSize = 2  # standard = 1 small chessboard = 2.5 large chessboard = 4.4
 
 FOLDER = 'OUTPUT/'
 if not os.path.exists(FOLDER):
@@ -23,9 +23,8 @@ if not os.path.exists(FOLDER):
     right_images = []
 else:
     # Calibration stores
-    # left_images = sorted(glob(os.path.join(FOLDER, '*_left.png')))
-    left_images = sorted(glob(os.path.join(FOLDER, '*_left.png')))
-    right_images = sorted(glob(os.path.join(FOLDER, '*_right.png')))
+    left_images = sorted(glob(os.path.join(FOLDER, 'left', '*_left.png')))
+    right_images = sorted(glob(os.path.join(FOLDER, 'right', '*_right.png')))
     numBoards -= len(left_images)
 
 
@@ -43,8 +42,8 @@ if __name__ == '__main__':
     # If you want 720P, they need to go into different USB ports
     # width_val = 420  # minimum for same laptop hub
     # height_val = 240  # minimum for same laptop hub
-    width_val = None
-    height_val = None
+    width_val = 800
+    height_val = 600
     camLP = PinholeCamera.loadFromOST(cam_left_calibration_file)
     camL = ThreadedCamera(int(cam_left_index), width_val,
                           height_val, camera_model=camLP)
@@ -76,6 +75,7 @@ if __name__ == '__main__':
         imgL_corrected_gray = cv2.cvtColor(imgL_corrected, cv2.COLOR_BGR2GRAY)
         imgR_corrected_gray = cv2.cvtColor(imgR_corrected, cv2.COLOR_BGR2GRAY)
 
+        print(imgL_corrected.shape)
         # Get chessboards
         foundL = False
         foundR = False
@@ -96,31 +96,35 @@ if __name__ == '__main__':
             cornersR = cv2.cornerSubPix(imgR_corrected_gray, cornersR, (11, 11), (-1, -1),
                                         criteria=(cv2.TERM_CRITERIA_EPS | cv2.TermCriteria_MAX_ITER, 30, 0.01))
 
-        if foundL and foundR and time.time() > COOLDOWN:
+        k = cv2.waitKey(25)
+        if k == ord('r') or foundL and foundR and time.time() > COOLDOWN:
             # save chessboards
             cv2.imwrite(os.path.join(
                 FOLDER, f'{numBoards}_left.png'), imgL_corrected)
-            left_images.append(imgL_corrected)
+            # left_images.append(imgL_corrected)
             cv2.imwrite(os.path.join(
                 FOLDER, f'{numBoards}_right.png'), imgR_corrected)
-            right_images.append(imgR_corrected)
+            # right_images.append(imgR_corrected)
             # Also need to push back object points
 
             numBoards -= 1
             COOLDOWN = time.time() + 2
             print(
                 f"L-R Images saved! Cooldown set! [{numBoards}] images left!")
-
             # decrement numBoards
 
         full_img = np.hstack((imgL_corrected_viz, imgR_corrected_viz))
-        cv2.waitKey(30)
+
         cv2.imshow('disp', full_img)
     print("Complete! Releasing cameras.")
     camL.release()
     camR.release()
     cv2.destroyAllWindows()
     print("Starting Calibration..")
+    left_images = []
+    right_images = []
+    left_images = sorted(glob(os.path.join(FOLDER, 'left', '*_left.png')))
+    right_images = sorted(glob(os.path.join(FOLDER, 'right', '*_right.png')))
     calibrator = StereoCalibrator(board[0], board[1], squareSize, (480, 640))
     for img_pair in zip(left_images, right_images):
         print(f"Adding pair: {img_pair[0]}:{img_pair[1]}")

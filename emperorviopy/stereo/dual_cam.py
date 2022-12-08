@@ -26,8 +26,9 @@ if __name__ == '__main__':
     # If you want 720P, they need to go into different USB ports
     # width_val = 420  # minimum for same laptop hub
     # height_val = 240  # minimum for same laptop hub
-    width_val = None
-    height_val = None
+    # PersonalRig: Plug B into right side, hub into left
+    width_val = 800
+    height_val = 600
     camL = ThreadedCamera(int(cam_left_index), width_val, height_val)
     camLP = PinholeCamera.loadFromOST(cam_left_calibration_file)
     camR = ThreadedCamera(int(cam_right_index), width_val, height_val)
@@ -35,13 +36,13 @@ if __name__ == '__main__':
     # maps for stereo image rectification?
 
     # These were obtained from dual_gui.py, make this into something that can be serailized and deserialized.
-    stereo = cv2.StereoBM_create()
+    stereo = cv2.StereoBMGM_create()
     numDisparities = 5 * 16
     stereo.setNumDisparities(numDisparities)
     stereo.setBlockSize(1 * 2 + 5)
-    stereo.setPreFilterType(1)
-    stereo.setPreFilterSize(2 * 2 + 5)
-    stereo.setPreFilterCap(5)
+    # stereo.setPreFilterType(1)
+    # stereo.setPreFilterSize(2 * 2 + 5)
+    # stereo.setPreFilterCap(5)
     stereo.setTextureThreshold(10)
     stereo.setUniquenessRatio(0)
     stereo.setSpeckleRange(5)
@@ -82,6 +83,7 @@ if __name__ == '__main__':
         # Scaling down the disparity values and normalizing them
         disparity = (disparity/16.0 - minDisparity)/numDisparities
         full_img = np.hstack((imgL_corrected_gray, imgR_corrected_gray))
+        print(full_img.shape)
         full_img_w_disparity = np.hstack((full_img, disparity))
         cv2.waitKey(30)
         cv2.imshow('disp', full_img)
