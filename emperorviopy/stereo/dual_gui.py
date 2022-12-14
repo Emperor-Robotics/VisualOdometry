@@ -12,11 +12,12 @@ from stereovision.calibration import StereoCalibrator, StereoCalibration
 from glob import glob
 import yaml
 
-translation_of_cam2 = np.array([-74.9112, -1.1862, -3.7268])
+translation_of_cam2 = np.array(
+    [-74.466074860268400, -0.627470098358044, -4.156235117962683])
 rotation_of_cam2 = np.array([
-    [.9989, -0.0040, -0.0467],
-    [0.0041, 1.0000, 0.0015],
-    [0.0467, -0.0017, 0.9989]])
+    [0.999656627059769, -0.005228656941179, -0.025676625987035],
+    [0.005345256704269, 1.0000, 0.004474551572321],
+    [0.025652606227284, -0.004610263289592, 0.999660286930590]])
 
 
 def nothing(x):
@@ -30,20 +31,20 @@ def runGui(stereo_cameras: ThreadedStereo) -> None:
     cv2.namedWindow('disp filtered', cv2.WINDOW_NORMAL)
     cv2.resizeWindow('disp filtered', 600, 600)
 
-    cv2.createTrackbar('numDisparities', 'disp', 16, 17, nothing)
-    cv2.createTrackbar('blockSize', 'disp', 1, 50, nothing)
+    cv2.createTrackbar('numDisparities', 'disp', 1, 17, nothing)
+    cv2.createTrackbar('blockSize', 'disp', 9, 50, nothing)
     # cv2.createTrackbar('preFilterType', 'disp', 1, 1, nothing)
     # cv2.createTrackbar('preFilterSize', 'disp', 2, 25, nothing)
     # cv2.createTrackbar('preFilterCap', 'disp', 5, 62, nothing)
     # cv2.createTrackbar('textureThreshold', 'disp', 10, 100, nothing)
     cv2.createTrackbar('uniquenessRatio', 'disp', 0, 100, nothing)
-    cv2.createTrackbar('speckleRange', 'disp', 5, 100, nothing)
-    cv2.createTrackbar('speckleWindowSize', 'disp', 0, 25, nothing)
+    cv2.createTrackbar('speckleRange', 'disp', 11, 100, nothing)
+    cv2.createTrackbar('speckleWindowSize', 'disp', 8, 25, nothing)
     cv2.createTrackbar('disp12MaxDiff', 'disp', 25, 25, nothing)
-    cv2.createTrackbar('minDisparity', 'disp', 9, 25, nothing)
+    cv2.createTrackbar('minDisparity', 'disp', 3, 25, nothing)
 
-    cv2.createTrackbar('sigma', 'disp filtered', 3, 10, nothing)
-    cv2.createTrackbar('lambda', 'disp filtered', 80, 100, nothing)
+    cv2.createTrackbar('sigma', 'disp filtered', 6, 10, nothing)
+    cv2.createTrackbar('lambda', 'disp filtered', 82, 200, nothing)
 
     # Creating an object of StereoBM algorithm
     stereo = cv2.StereoSGBM_create()
@@ -77,13 +78,13 @@ def runGui(stereo_cameras: ThreadedStereo) -> None:
         imgR_gray = cv2.cvtColor(imgR, cv2.COLOR_BGR2GRAY)
         imgL_gray = cv2.cvtColor(imgL, cv2.COLOR_BGR2GRAY)
 
-        imgL_gray = cv2.remap(imgL_gray, leftmapX, leftmapY,
-                              cv2.INTER_LINEAR)
-        imgR_gray = cv2.remap(imgR_gray, rightmapX, rightmapY,
-                              cv2.INTER_LINEAR)
+        left_remap = cv2.remap(imgL_gray, leftmapX, leftmapY,
+                               cv2.INTER_LINEAR)
+        right_remap = cv2.remap(imgR_gray, rightmapX, rightmapY,
+                                cv2.INTER_LINEAR)
 
-        Left_nice = imgL_gray
-        Right_nice = imgR_gray
+        left_remap = cv2.resize(left_remap, (250, 250))
+        right_remap = cv2.resize(right_remap, (250, 250))
 
         # Updating the parameters based on the trackbar positions
         numDisparities = cv2.getTrackbarPos('numDisparities', 'disp')*16
@@ -97,11 +98,8 @@ def runGui(stereo_cameras: ThreadedStereo) -> None:
         speckleWindowSize = cv2.getTrackbarPos('speckleWindowSize', 'disp')*2
         disp12MaxDiff = cv2.getTrackbarPos('disp12MaxDiff', 'disp')
         minDisparity = cv2.getTrackbarPos('minDisparity', 'disp')
-
         sig = cv2.getTrackbarPos('sigma', 'disp filtered')
         lam = cv2.getTrackbarPos('lambda', 'disp filtered') * 100
-
-        # Setting the updated parameters before computing disparity map
         stereo.setNumDisparities(numDisparities)
         stereo.setBlockSize(blockSize)
         # stereo.setPreFilterType(preFilterType)
@@ -113,37 +111,25 @@ def runGui(stereo_cameras: ThreadedStereo) -> None:
         stereo.setSpeckleWindowSize(speckleWindowSize)
         stereo.setDisp12MaxDiff(disp12MaxDiff)
         stereo.setMinDisparity(minDisparity)
+        wls_filter.setLambda(lam)
+        wls_filter.setSigmaColor(sig)
 
-        # wls_filter.setLambda(lam)
-        # wls_filter.setSigmaColor(sig)
-        wls_filter.setLambda(8000)
-        wls_filter.setSigmaColor(2.6)
+        left_disp = stereo.compute(left_remap, right_remap)
+        right_disp = right_matcher.compute(right_remap, left_remap)
+        filtered_disp = wls_filter.filter(
+            left_disp, left_remap, disparity_map_right=right_disp)
 
-        # # Calculating disparity using the StereoBM algorithm
-        # left_remap = cv2.remap(Left_nice, leftmapX, leftmapY,
-        #                        cv2.INTER_LANCZOS4, cv2.BORDER_CONSTANT, 0)
-        # right_remap = cv2.remap(
-        #     Right_nice, rightmapX, rightmapY, cv2.INTER_LANCZOS4, cv2.BORDER_CONSTANT, 0)
-
-        # left_disp = stereo.compute(left_remap, right_remap)
-        # right_disp = right_matcher.compute(right_remap, left_remap)
-        # filtered_disp = wls_filter.filter(
-        #     left_disp, left_remap, disparity_map_right=right_disp)
-
-        # # filtered_disp = filtered_disp.astype(np.float32)
-        # filtered_disp = (filtered_disp/256).astype(np.uint8)
-        # filtered_disp = cv2.applyColorMap(filtered_disp, cv2.COLORMAP_JET)
-
-        # Converting to float32
+        # Visualize Disparity
         disparity = left_disp.astype(np.float32)
-
-        # Scaling down the disparity values and normalizing them
         disparity = (disparity/16.0 - minDisparity)/numDisparities
-        # Displaying the disparity map
-        # full_img = np.hstack((Left_nice, Right_nice))
         cv2.imshow("disp", disparity)
-        # cv2.imshow("disp filtered", filtered_disp)
+
+        # Visualize Remaps
+        # full_img = np.hstack((left_remap, right_remap))
         # cv2.imshow('full', full_img)
+
+        filtered_disp = cv2.ximgproc.getDisparityVis(filtered_disp, scale=10)
+        cv2.imshow("disp filtered", filtered_disp)
         # Close window using esc key
         if cv2.waitKey(1) == 27:
             break
